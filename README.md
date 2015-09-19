@@ -1,0 +1,2 @@
+# hdinsightsamples
+HdInsight usage samples
