@@ -11,7 +11,7 @@ hiveCmd=os.path.join(os.environ['HIVE_HOME'], 'bin', 'hive.cmd')
 def PrintHelp():
     print '\t INCORRECT USAGE'
     print '\t'
-    print '\t USAGE: <filename.pl> <hdfs-location>'
+    print '\t USAGE: <filename.pl> <tablename>'
     exit(1)
     
     
