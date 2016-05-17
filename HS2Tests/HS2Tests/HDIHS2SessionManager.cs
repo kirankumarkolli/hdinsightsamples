@@ -25,6 +25,7 @@ namespace HS2Tests
         /// </summary>
         public void RunQuery(string query, int parallism, TimeSpan duration)
         {
+            // Synchorous execution till duration 
         }
 
         protected void Init()
