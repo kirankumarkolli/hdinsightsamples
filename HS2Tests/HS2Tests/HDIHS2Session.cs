@@ -21,6 +21,30 @@ namespace HS2Tests
             this.OpenTicks = et - st;
         }
 
+        public void ExecuteQuery(string query)
+        {
+            using (var cmd = this.Connection.CreateCommand())
+            {
+                cmd.CommandText = query;
+                cmd.CommandType = System.Data.CommandType.Text;
+                var reader = cmd.ExecuteReader();
+
+                while (reader.HasRows && reader.Read())
+                {
+                    object[] values = new object[reader.FieldCount];
+                    while (reader.Read())
+                    {
+                        reader.GetValues(values);
+                        if(Constants.DumpExecutionResults)
+                        {
+                            Console.WriteLine(string.Join(",", values));
+                        }
+                    }
+                }
+            }
+        }
+
+
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 

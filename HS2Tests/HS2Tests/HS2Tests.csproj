@@ -48,6 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="AdoSubmission.cs" />
+    <Compile Include="Constants.cs" />
     <Compile Include="HDIHS2Session.cs" />
     <Compile Include="HDIHS2SessionManager.cs" />
     <Compile Include="Program.cs" />
