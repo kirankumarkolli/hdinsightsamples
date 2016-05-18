@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -13,16 +15,13 @@ namespace HS2Tests
         protected int NumOfSessions { get; set; }
 
         protected List<HDIHS2Session> Sessions { get; set; }
-        protected int CurrentActiveSessions { get; set; }
-        protected int CurrentActiveSessionsLimit { get; set; }
-        protected object ActiveSessionLock { get; set; }
+        protected ConcurrentQueue<string> Slots { get; set; }
 
         public HDIHS2SessionManager(string connectionString, int sessionCount)
         {
             this.ConnectionString = connectionString;
             this.NumOfSessions = sessionCount;
             this.Sessions = new List<HDIHS2Session>();
-            this.ActiveSessionLock = new object();
 
             this.Init();
         }
@@ -32,8 +31,11 @@ namespace HS2Tests
         /// </summary>
         public void RunQuery(string query, int parallism, TimeSpan duration)
         {
-            this.CurrentActiveSessions = 0;
-            this.CurrentActiveSessionsLimit = parallism;
+            this.Slots = new ConcurrentQueue<string>();
+            for (int i=0; i< parallism; i++)
+            {
+                this.Slots.Enqueue("S" + i);
+            }
 
             // Synchorous execution till duration 
             var tokenSource = new CancellationTokenSource();
@@ -62,50 +64,31 @@ namespace HS2Tests
 
         protected async Task ExecuteSession(HDIHS2Session session, string query, CancellationToken token)
         {
+            // Wait 1M before startign execution 
+            await Task.Delay(TimeSpan.FromMinutes(1));
+
             while(! token.IsCancellationRequested)
             {
-                var slot = this.GetFreeActiveSlot();
-                if (slot != Int32.MaxValue)
+                string slotName = string.Empty;
+                if (this.Slots.TryDequeue(out slotName))
                 {
-                    var slotName = "S" + slot.ToString();
-
                     try
                     {
                         session.ExecuteQuery(query, slotName);
                     }
+                    catch (Exception ex)
+                    {
+                        Trace.TraceError(ex.ToString());
+                    }
                     finally
                     {
-                        this.Release(slotName);
+                        this.Slots.Enqueue(slotName);
                     }
 
                 }
                 await Task.Delay(TimeSpan.FromSeconds(5));
             }
         }
-
-        protected void Release(string slotName)
-        {
-            lock (this.ActiveSessionLock)
-            {
-                Console.WriteLine("Releasing slot {0}", slotName);
-                this.CurrentActiveSessions--;
-            }
-        }
-
-        protected int GetFreeActiveSlot()
-        {
-            lock(this.ActiveSessionLock)
-            {
-                if(this.CurrentActiveSessions < this.CurrentActiveSessionsLimit)
-                {
-                    this.CurrentActiveSessions++;
-                    return this.CurrentActiveSessions - 1;
-                }
-            }
-
-            return Int32.MaxValue;
-        }
-
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
