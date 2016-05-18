@@ -23,6 +23,8 @@ namespace HS2Tests
             this.NumOfSessions = sessionCount;
             this.Sessions = new List<HDIHS2Session>();
             this.ActiveSessionLock = new object();
+
+            this.Init();
         }
 
         /// <summary>
@@ -54,7 +56,7 @@ namespace HS2Tests
             // Serial initialization 
             for (int i = 0; i < NumOfSessions; i++)
             {
-                this.Sessions.Add(new HDIHS2Session(this.ConnectionString));
+                this.Sessions.Add(new HDIHS2Session(this.ConnectionString, "C" + i.ToString()));
             }
         }
 
@@ -62,42 +64,46 @@ namespace HS2Tests
         {
             while(! token.IsCancellationRequested)
             {
-                if (this.AmIInLimits())
+                var slot = this.GetFreeActiveSlot();
+                if (slot != Int32.MaxValue)
                 {
+                    var slotName = "S" + slot.ToString();
+
                     try
                     {
-                        session.ExecuteQuery(query);
+                        session.ExecuteQuery(query, slotName);
                     }
                     finally
                     {
-                        this.Release();
+                        this.Release(slotName);
                     }
 
                 }
-                await Task.Delay(TimeSpan.FromSeconds(10));
+                await Task.Delay(TimeSpan.FromSeconds(5));
             }
         }
 
-        protected void Release()
+        protected void Release(string slotName)
         {
             lock (this.ActiveSessionLock)
             {
+                Console.WriteLine("Releasing slot {0}", slotName);
                 this.CurrentActiveSessions--;
             }
         }
 
-        protected bool AmIInLimits()
+        protected int GetFreeActiveSlot()
         {
             lock(this.ActiveSessionLock)
             {
                 if(this.CurrentActiveSessions < this.CurrentActiveSessionsLimit)
                 {
                     this.CurrentActiveSessions++;
-                    return true;
+                    return this.CurrentActiveSessions - 1;
                 }
             }
 
-            return false;
+            return Int32.MaxValue;
         }
 
 

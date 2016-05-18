@@ -11,9 +11,12 @@ namespace HS2Tests
     {
         protected HiveConnection Connection { get; set; }
         protected long OpenTicks { get; set; }
+        protected string Name { get; set; }
 
-        public HDIHS2Session(string connectionString)
+        public HDIHS2Session(string connectionString, string name)
         {
+            this.Name = name;
+
             var st = Environment.TickCount;
             this.Connection = new HiveConnection(connectionString);
             this.Connection.Open();
@@ -21,8 +24,9 @@ namespace HS2Tests
             this.OpenTicks = et - st;
         }
 
-        public void ExecuteQuery(string query)
+        public void ExecuteQuery(string query, string correlationInfo)
         {
+            Console.WriteLine("Started query on session: {0} {1}", correlationInfo, this.Name);
             using (var cmd = this.Connection.CreateCommand())
             {
                 cmd.CommandText = query;
@@ -42,6 +46,8 @@ namespace HS2Tests
                     }
                 }
             }
+
+            // Console.WriteLine("Completed query on session: {0}", this.Name);
         }
 
 
