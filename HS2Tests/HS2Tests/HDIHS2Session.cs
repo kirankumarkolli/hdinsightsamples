@@ -12,39 +12,60 @@ namespace HS2Tests
         protected HiveConnection Connection { get; set; }
         protected long OpenTicks { get; set; }
         protected string Name { get; set; }
+        protected string ConnectionString { get; set; }
 
         public HDIHS2Session(string connectionString, string name)
         {
             this.Name = name;
+            this.ConnectionString = connectionString;
+            this.EnsureInit();
+        }
 
-            var st = Environment.TickCount;
-            this.Connection = new HiveConnection(connectionString);
-            this.Connection.Open();
-            var et = Environment.TickCount;
-            this.OpenTicks = et - st;
+        protected void EnsureInit()
+        {
+            if (this.Connection == null)
+            {
+                var st = Environment.TickCount;
+                this.Connection = new HiveConnection(this.ConnectionString);
+                this.Connection.Open();
+                var et = Environment.TickCount;
+                this.OpenTicks = et - st;
+            }
         }
 
         public void ExecuteQuery(string query, string correlationInfo)
         {
-            Console.WriteLine("Started query on session: {0} {1}", correlationInfo, this.Name);
-            using (var cmd = this.Connection.CreateCommand())
-            {
-                cmd.CommandText = query;
-                cmd.CommandType = System.Data.CommandType.Text;
-                var reader = cmd.ExecuteReader();
+            EnsureInit();
 
-                while (reader.HasRows && reader.Read())
+            Console.WriteLine("Started query on session: {0} {1}", correlationInfo, this.Name);
+
+            try
+            {
+                using (var cmd = this.Connection.CreateCommand())
                 {
-                    object[] values = new object[reader.FieldCount];
-                    while (reader.Read())
+                    cmd.CommandText = query;
+                    cmd.CommandType = System.Data.CommandType.Text;
+                    var reader = cmd.ExecuteReader();
+
+                    while (reader.HasRows && reader.Read())
                     {
-                        reader.GetValues(values);
-                        if(Constants.DumpExecutionResults)
+                        object[] values = new object[reader.FieldCount];
+                        while (reader.Read())
                         {
-                            Console.WriteLine(string.Join(",", values));
+                            reader.GetValues(values);
+                            if (Constants.DumpExecutionResults)
+                            {
+                                Console.WriteLine(string.Join(",", values));
+                            }
                         }
                     }
                 }
+            }
+            catch
+            {
+                this.Connection.Dispose();
+                this.Connection = null;
+                throw;
             }
 
             // Console.WriteLine("Completed query on session: {0}", this.Name);
