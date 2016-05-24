@@ -10,14 +10,15 @@ namespace HS2Tests
     public class HDIHS2Session : IDisposable
     {
         protected HiveConnection Connection { get; set; }
-        protected long OpenTicks { get; set; }
         protected string Name { get; set; }
-        protected string ConnectionString { get; set; }
+        protected HDIHS2SessionManager SessionManager { get; set; }
+        protected bool DumpExecutionResults { get; set; }
 
-        public HDIHS2Session(string connectionString, string name)
+        public HDIHS2Session(string name, HDIHS2SessionManager manager)
         {
             this.Name = name;
-            this.ConnectionString = connectionString;
+            this.SessionManager = manager;
+
             this.EnsureInit();
         }
 
@@ -25,11 +26,34 @@ namespace HS2Tests
         {
             if (this.Connection == null)
             {
-                var st = Environment.TickCount;
-                this.Connection = new HiveConnection(this.ConnectionString);
-                this.Connection.Open();
-                var et = Environment.TickCount;
-                this.OpenTicks = et - st;
+                var activity = new HS2ActivityRecord()
+                {
+                    StartTime = DateTimeOffset.UtcNow,
+                    Name = HS2ActivityName.OpenSession,
+                    SessionName = this.Name,
+                    Status = HS2ActivityState.NOINIT,
+                };
+
+                try
+                {
+                    var connection = new HiveConnection(this.SessionManager.ConnectionString);
+                    connection.Open();
+
+                    this.Connection = connection;
+
+                    activity.Status = HS2ActivityState.SUCCESS;
+                    activity.EndTime = DateTimeOffset.UtcNow;
+                    this.SessionManager.NotifyActivity(activity);
+                }
+                catch
+                {
+                    activity.Status = HS2ActivityState.FAIL;
+                    activity.EndTime = DateTimeOffset.UtcNow;
+                    this.SessionManager.NotifyActivity(activity);
+
+                    throw;
+                }
+
             }
         }
 
@@ -37,7 +61,13 @@ namespace HS2Tests
         {
             EnsureInit();
 
-            Console.WriteLine("Started query on session: {0} {1}", correlationInfo, this.Name);
+            var activity = new HS2ActivityRecord()
+            {
+                StartTime = DateTimeOffset.UtcNow,
+                Name = HS2ActivityName.ExecuteQueryOnly,
+                SessionName = this.Name,
+                Status = HS2ActivityState.NOINIT,
+            };
 
             try
             {
@@ -47,28 +77,51 @@ namespace HS2Tests
                     cmd.CommandType = System.Data.CommandType.Text;
                     var reader = cmd.ExecuteReader();
 
+                    activity.EndTime = DateTimeOffset.UtcNow;
+                    activity.Status = HS2ActivityState.SUCCESS;
+                    this.SessionManager.NotifyActivity(activity);
+
+                    activity = new HS2ActivityRecord()
+                    {
+                        StartTime = DateTimeOffset.UtcNow,
+                        Name = HS2ActivityName.FetchResults,
+                        SessionName = this.Name,
+                        Status = HS2ActivityState.NOINIT,
+                    };
+
+                    int count = 0;
                     while (reader.HasRows && reader.Read())
                     {
                         object[] values = new object[reader.FieldCount];
                         while (reader.Read())
                         {
                             reader.GetValues(values);
-                            if (Constants.DumpExecutionResults)
+                            count++;
+
+                            if (this.DumpExecutionResults)
                             {
                                 Console.WriteLine(string.Join(",", values));
                             }
                         }
                     }
+
+                    activity.EndTime = DateTimeOffset.UtcNow;
+                    activity.Status = HS2ActivityState.SUCCESS;
+                    activity.Details = count.ToString();
+                    this.SessionManager.NotifyActivity(activity);
                 }
             }
             catch
             {
+                activity.EndTime = DateTimeOffset.UtcNow;
+                activity.Status = HS2ActivityState.FAIL;
+                this.SessionManager.NotifyActivity(activity);
+
                 this.Connection.Dispose();
                 this.Connection = null;
+
                 throw;
             }
-
-            // Console.WriteLine("Completed query on session: {0}", this.Name);
         }
 
 

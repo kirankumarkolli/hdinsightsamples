@@ -11,17 +11,19 @@ namespace HS2Tests
 {
     public class HDIHS2SessionManager : IDisposable
     {
-        protected string ConnectionString { get; set; }
+        internal string ConnectionString { get; set; }
         protected int NumOfSessions { get; set; }
 
         protected List<HDIHS2Session> Sessions { get; set; }
         protected ConcurrentQueue<string> Slots { get; set; }
+        protected ConcurrentBag<HS2ActivityRecord> Activities { get; set; }
 
         public HDIHS2SessionManager(string connectionString, int sessionCount)
         {
             this.ConnectionString = connectionString;
             this.NumOfSessions = sessionCount;
             this.Sessions = new List<HDIHS2Session>();
+            this.Activities = new ConcurrentBag<HS2ActivityRecord>();
 
             this.Init();
         }
@@ -53,12 +55,17 @@ namespace HS2Tests
             // TODO: Collect the executor (TBD) results
         }
 
+        internal void NotifyActivity(HS2ActivityRecord activity)
+        {
+            this.Activities.Add(activity);
+        }
+
         protected void Init()
         {
             // Serial initialization 
             for (int i = 0; i < NumOfSessions; i++)
             {
-                this.Sessions.Add(new HDIHS2Session(this.ConnectionString, "C" + i.ToString()));
+                this.Sessions.Add(new HDIHS2Session("C" + i.ToString(), this));
             }
         }
 
