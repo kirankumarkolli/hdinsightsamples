@@ -57,7 +57,7 @@ namespace HS2Tests
             }
         }
 
-        public void ExecuteQuery(string query, string correlationInfo)
+        public void ExecuteQuery(string query, string correlationInfo, bool publishActivities)
         {
             EnsureInit();
 
@@ -79,7 +79,10 @@ namespace HS2Tests
 
                     activity.EndTime = DateTimeOffset.UtcNow;
                     activity.Status = HS2ActivityState.SUCCESS;
-                    this.SessionManager.NotifyActivity(activity);
+                    if (publishActivities)
+                    {
+                        this.SessionManager.NotifyActivity(activity);
+                    }
 
                     activity = new HS2ActivityRecord()
                     {
@@ -108,14 +111,22 @@ namespace HS2Tests
                     activity.EndTime = DateTimeOffset.UtcNow;
                     activity.Status = HS2ActivityState.SUCCESS;
                     activity.Details = count.ToString();
-                    this.SessionManager.NotifyActivity(activity);
+
+                    if (publishActivities)
+                    {
+                        this.SessionManager.NotifyActivity(activity);
+                    }
                 }
             }
             catch
             {
                 activity.EndTime = DateTimeOffset.UtcNow;
                 activity.Status = HS2ActivityState.FAIL;
-                this.SessionManager.NotifyActivity(activity);
+
+                if (publishActivities)
+                {
+                    this.SessionManager.NotifyActivity(activity);
+                }
 
                 this.Connection.Dispose();
                 this.Connection = null;
