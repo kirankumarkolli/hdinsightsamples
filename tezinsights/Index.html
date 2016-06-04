@@ -122,6 +122,26 @@ text {
   }
 
   // Annotate nodes with details from dag.json
+  var vertexIdMapping = dagJson.entities[0].otherinfo.vertexNameIdMapping;
+  for (var e in vertexIdMapping) {
+    for (n in nodes) {
+      if (nodes[n].id === e) {
+        nodes[n].VertexId = vertexIdMapping[e];
+
+        for (var e1 in verticesJson.entities) {
+          var entry = verticesJson.entities[e1];
+          if (entry.entity === nodes[n].VertexId) {
+            // Found vertex entry attach the task entries
+            nodes[n].Tasks = entry.relatedentities.TEZ_TASK_ID;
+          }
+        }
+      }
+    }
+  }
+
+  // Attach tasks to the nodes
+  
+
   var edges = dagJson.entities[0].otherinfo.dagPlan.edges;
   for (var edge in edges) {
     var inV = edges[edge].inputVertexName;
