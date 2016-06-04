@@ -1,0 +1,168 @@
+
+<!doctype html>
+
+<meta charset="utf-8">
+<title>TEZ Insights</title>
+
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script language="javascript" type="text/javascript" src="http://cpettitt.github.io/project/dagre-d3/latest/dagre-d3.js"></script>
+  <script language="javascript" type="text/javascript" src="hive_20160602021252_cdf6a0a4-d0d0-4e0c-bedb-69505fd0e2a0\query.js"></script>
+
+<h1>TEZ INSIGHTS (proto)</h1>
+
+<style id="css">
+/* This sets the color for "TK" nodes to a light blue green. */
+g.type-TK > rect {
+  fill: #00ffd0;
+}
+
+text {
+  font-weight: 300;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
+  font-size: 14px;
+}
+
+.node rect {
+  stroke: #999;
+  fill: #fff;
+  stroke-width: 1.5px;
+}
+
+.edgePath path {
+  stroke: #333;
+  stroke-width: 1.5px;
+}
+</style>
+
+<svg id="dag" width=1500 height=900></svg>
+
+<section>
+<p>TEZ DAG from ATS
+</section>
+
+<script id="js">
+// Create the input graph
+  function LoadOpTree(compsitionList, scope, opName, opObj) {
+    var compositionNode = {
+        id: scope + "/" + opName,
+        adjacencies: [],
+      };
+    compsitionList.push(compositionNode);
+
+    for (var c in opObj["children"]) {
+      compositionNode.adjacencies.push(scope + "/" + c);
+      LoadOpTree(compsitionList, scope, c, opObj["children"][c]);
+    }
+  }
+
+  var nodes = [];
+  var plan = JSON.parse(queryJson.otherinfo.QUERY).queryPlan;
+  var stagePlans = plan["STAGE PLANS"];
+  for (var stage in stagePlans) {
+    if (stagePlans[stage].hasOwnProperty("Tez")) {
+      // Prepare the graph payload
+      var tez = stagePlans[stage].Tez;
+      for (var p in tez["Vertices:"]) {
+        var currnetNode = {
+              id: p, 
+              adjacencies: [],
+              composition: [],
+          };
+        nodes.push(currnetNode);
+
+        // Only one operator tree
+        var opTree = tez["Vertices:"][p];
+        if (opTree.hasOwnProperty("Map Operator Tree:")) {
+          for (var mapEntry in opTree["Map Operator Tree:"]) {
+            for (var op in opTree["Map Operator Tree:"][mapEntry]) {
+              LoadOpTree(currnetNode.composition, p, op, opTree["Map Operator Tree:"][mapEntry][op]);
+            }
+          }
+        } 
+
+        if (opTree.hasOwnProperty("Reduce Operator Tree:")) {
+          for (var op in opTree["Reduce Operator Tree:"]) {
+            LoadOpTree(currnetNode.composition, p, op, opTree["Reduce Operator Tree:"][op]);
+          }
+        } 
+
+      }
+
+      for (var nodeId in tez["Edges:"]) {
+        var parentId = tez["Edges:"][nodeId].parent;
+
+        for (var i=0; i< nodes.length; i++) {
+          var n = nodes[i];
+          if (n.id === parentId) {
+            n.adjacencies.push(nodeId);
+
+            // TODO: Fix it in single loop
+            // Link composition as well 
+            for (var j=0; j < nodes.length; j++) {
+              var m = nodes[j];
+              if (m.id === nodeId) {
+                var l = n.composition[n.composition.length - 1];
+                var f = m.composition[0];
+                l.adjacencies.push(f.id);
+              }
+            }
+          }
+        }
+      }
+
+      // Only one TEZ processor expected
+      break;
+    }
+  }
+
+  // Render the graph 
+  // http://cpettitt.github.io/project/dagre-d3/latest/demo/sentence-tokenization.html
+  var g = new dagreD3.graphlib.Graph()
+    .setGraph({})
+    .setDefaultEdgeLabel(function() { return {}; });
+
+  for (var i=0; i< nodes.length; i++) {
+    var n = nodes[i];
+    g.setNode(n.id, { label: n.id, class: "type-TOP" });
+
+    for (var e in n.composition) {
+      g.setNode(n.composition[e].id, {label: n.composition[e].id, class: "type-TOP"});
+    }
+  }
+
+  g.nodes().forEach(function(v) {
+    var node = g.node(v);
+    // Round the corners of the nodes
+    node.rx = node.ry = 5;
+  });
+
+  for (var i=0; i< nodes.length; i++) {
+    var n = nodes[i];
+    n.adjacencies.forEach(function(e){
+      g.setEdge(n.id, e);
+    });
+
+    for (var e in n.composition) {
+      var e1 = n.composition[e];
+      e1.adjacencies.forEach(function(a){
+        console.log(e1.id, a);
+          g.setEdge(e1.id, a);
+        });
+    }
+  }
+
+  // Create the renderer
+  var render = new dagreD3.render();
+
+  // Set up an SVG group so that we can translate the final graph.
+  var svg = d3.select("svg"),
+      svgGroup = svg.append("g");
+
+  // Run the renderer. This is what draws the final graph.
+  render(d3.selectAll("svg g"), g);
+
+  // Center the graph
+  var xCenterOffset = (960 - g.graph().width) / 2;
+  svgGroup.attr("transform", "translate(" + xCenterOffset + ", 20)");
+  svg.attr("height", g.graph().height + 40);
+</script>
