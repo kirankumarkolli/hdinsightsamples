@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace HS2Tests
@@ -12,12 +15,15 @@ namespace HS2Tests
         protected int NumOfSessions { get; set; }
 
         protected List<HDIHS2Session> Sessions { get; set; }
+        protected ConcurrentQueue<string> Slots { get; set; }
 
         public HDIHS2SessionManager(string connectionString, int sessionCount)
         {
             this.ConnectionString = connectionString;
             this.NumOfSessions = sessionCount;
             this.Sessions = new List<HDIHS2Session>();
+
+            this.Init();
         }
 
         /// <summary>
@@ -25,6 +31,26 @@ namespace HS2Tests
         /// </summary>
         public void RunQuery(string query, int parallism, TimeSpan duration)
         {
+            this.Slots = new ConcurrentQueue<string>();
+            for (int i=0; i< parallism; i++)
+            {
+                this.Slots.Enqueue("S" + i);
+            }
+
+            // Synchorous execution till duration 
+            var tokenSource = new CancellationTokenSource();
+            var executors = new List<Task>();
+            foreach (var e in this.Sessions)
+            {
+                executors.Add(ExecuteSession(e, query, tokenSource.Token));
+            }
+
+            Task.Delay(duration).Wait();
+            tokenSource.Cancel();
+
+            Task.WaitAll(executors.ToArray());
+
+            // TODO: Collect the executor (TBD) results
         }
 
         protected void Init()
@@ -32,7 +58,35 @@ namespace HS2Tests
             // Serial initialization 
             for (int i = 0; i < NumOfSessions; i++)
             {
-                this.Sessions.Add(new HDIHS2Session(this.ConnectionString));
+                this.Sessions.Add(new HDIHS2Session(this.ConnectionString, "C" + i.ToString()));
+            }
+        }
+
+        protected async Task ExecuteSession(HDIHS2Session session, string query, CancellationToken token)
+        {
+            // Wait 1M before startign execution 
+            await Task.Delay(TimeSpan.FromMinutes(1));
+
+            while(! token.IsCancellationRequested)
+            {
+                string slotName = string.Empty;
+                if (this.Slots.TryDequeue(out slotName))
+                {
+                    try
+                    {
+                        session.ExecuteQuery(query, slotName);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.TraceError(ex.ToString());
+                    }
+                    finally
+                    {
+                        this.Slots.Enqueue(slotName);
+                    }
+
+                }
+                await Task.Delay(TimeSpan.FromSeconds(5));
             }
         }
 
