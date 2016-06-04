@@ -45,7 +45,7 @@ text {
 </section>
 
 <script id="js">
-// Create the input graph
+  // Create the input graph
   function LoadOpTree(compsitionList, scope, opName, opObj) {
     var compositionNode = {
         id: scope + "/" + opName,
@@ -55,7 +55,7 @@ text {
     compsitionList.push(compositionNode);
 
     for (var c in opObj["children"]) {
-      compositionNode.adjacencies.push(scope + "/" + c);
+      compositionNode.adjacencies.push({ id: scope + "/" + c });
       LoadOpTree(compsitionList, scope, c, opObj["children"][c]);
     }
   }
@@ -100,7 +100,7 @@ text {
         for (var i=0; i< nodes.length; i++) {
           var n = nodes[i];
           if (n.id === parentId) {
-            n.adjacencies.push(nodeId);
+            n.adjacencies.push({ id: nodeId });
 
             // TODO: Fix it in single loop
             // Link composition as well 
@@ -109,7 +109,7 @@ text {
               if (m.id === nodeId) {
                 var l = n.composition[n.composition.length - 1];
                 var f = m.composition[0];
-                l.adjacencies.push(f.id);
+                l.adjacencies.push({ id: f.id });
               }
             }
           }
@@ -118,6 +118,31 @@ text {
 
       // Only one TEZ processor expected
       break;
+    }
+  }
+
+  // Annotate nodes with details from dag.json
+  var edges = dagJson.entities[0].otherinfo.dagPlan.edges;
+  for (var edge in edges) {
+    var inV = edges[edge].inputVertexName;
+    var outV = edges[edge].outputVertexName;
+
+    var label = [];
+    for (var p in edges[edge]) {
+      if (p.endsWith("Type")) {
+        label.push(p + "=" + edges[edge][p]);
+      }
+    }
+
+    for (var n in nodes) {
+      if (nodes[n].id === inV) {
+        // set label
+        for (var adj in nodes[n].adjacencies) {
+          if(nodes[n].adjacencies[adj].id === outV) {
+            nodes[n].adjacencies[adj].label = label.join("\n");
+          }
+        }
+      }
     }
   }
 
@@ -130,7 +155,7 @@ text {
   for (var i=0; i< nodes.length; i++) {
     var n = nodes[i];
     g.setNode(n.id, { label: n.name, class: "type-TOP" });
-    g.setNode(n.id + "grp", { label: n.id + "grp", clusterLabelPos: "top", class: "type-TOP", style: 'fill: #d3d7e8' });
+    g.setNode(n.id + "grp", { label: n.id + "grp", labelpos:"l", clusterLabelPos: "top", class: "type-TOP", style: 'fill: #d3d7e8' });
 
     for (var e in n.composition) {
       g.setNode(n.composition[e].id, {label: n.composition[e].name, class: "type-TOP"});
@@ -148,14 +173,15 @@ text {
   for (var i=0; i< nodes.length; i++) {
     var n = nodes[i];
     n.adjacencies.forEach(function(e){
-      g.setEdge(n.id, e);
+      console.log(n.id, e.id, "label", e.label);
+      g.setEdge(n.id, e.id, { label: e.label });
     });
 
     for (var e in n.composition) {
       var e1 = n.composition[e];
       e1.adjacencies.forEach(function(a){
-        console.log(e1.id, a);
-          g.setEdge(e1.id, a);
+          console.log(e1.id, a.id);
+          g.setEdge(e1.id, a.id);
         });
     }
   }
