@@ -6,7 +6,10 @@
 
 <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
 <script language="javascript" type="text/javascript" src="http://cpettitt.github.io/project/dagre-d3/latest/dagre-d3.js"></script>
-  <script language="javascript" type="text/javascript" src="hive_20160602021252_cdf6a0a4-d0d0-4e0c-bedb-69505fd0e2a0\query.js"></script>
+<script language="javascript" type="text/javascript" src="hive_20160602021252_cdf6a0a4-d0d0-4e0c-bedb-69505fd0e2a0\query.js"></script>
+<script language="javascript" type="text/javascript" src="hive_20160602021252_cdf6a0a4-d0d0-4e0c-bedb-69505fd0e2a0\dag.js"></script>
+<script language="javascript" type="text/javascript" src="hive_20160602021252_cdf6a0a4-d0d0-4e0c-bedb-69505fd0e2a0\vertices.js"></script>
+<script language="javascript" type="text/javascript" src="hive_20160602021252_cdf6a0a4-d0d0-4e0c-bedb-69505fd0e2a0\tasks.js"></script>
 
 <h1>TEZ INSIGHTS (proto)</h1>
 
@@ -45,6 +48,7 @@ text {
   function LoadOpTree(compsitionList, scope, opName, opObj) {
     var compositionNode = {
         id: scope + "/" + opName,
+        name: opName,
         adjacencies: [],
       };
     compsitionList.push(compositionNode);
@@ -65,6 +69,7 @@ text {
       for (var p in tez["Vertices:"]) {
         var currnetNode = {
               id: p, 
+              name: p,
               adjacencies: [],
               composition: [],
           };
@@ -123,11 +128,11 @@ text {
 
   for (var i=0; i< nodes.length; i++) {
     var n = nodes[i];
-    g.setNode(n.id, { label: n.id, class: "type-TOP" });
+    g.setNode(n.id, { label: n.name, class: "type-TOP" });
     g.setNode(n.id + "grp", { label: n.id + "grp", clusterLabelPos: "top", class: "type-TOP", style: 'fill: #d3d7e8' });
 
     for (var e in n.composition) {
-      g.setNode(n.composition[e].id, {label: n.composition[e].id, class: "type-TOP"});
+      g.setNode(n.composition[e].id, {label: n.composition[e].name, class: "type-TOP"});
       g.setParent(n.composition[e].id, n.id + "grp");
     }
 
