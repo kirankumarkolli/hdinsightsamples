@@ -117,17 +117,20 @@ text {
 
   // Render the graph 
   // http://cpettitt.github.io/project/dagre-d3/latest/demo/sentence-tokenization.html
-  var g = new dagreD3.graphlib.Graph()
+  var g = new dagreD3.graphlib.Graph({compound:true})
     .setGraph({})
     .setDefaultEdgeLabel(function() { return {}; });
 
   for (var i=0; i< nodes.length; i++) {
     var n = nodes[i];
     g.setNode(n.id, { label: n.id, class: "type-TOP" });
+    g.setNode(n.id + "grp", { label: n.id + "grp", class: "type-TOP", style: 'fill: #d3d7e8' });
 
     for (var e in n.composition) {
       g.setNode(n.composition[e].id, {label: n.composition[e].id, class: "type-TOP"});
+      g.setParent(n.composition[e].id, n.id + "grp");
     }
+
   }
 
   g.nodes().forEach(function(v) {
