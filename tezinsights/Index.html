@@ -38,6 +38,7 @@ text {
 </style>
 
 <svg id="dag" width=1500 height=900></svg>
+<svg id="vertex" width=1500 height=900></svg>
 
 <section>
 <p>TEZ DAG from ATS
@@ -163,7 +164,7 @@ text {
   var render = new dagreD3.render();
 
   // Set up an SVG group so that we can translate the final graph.
-  var svg = d3.select("svg"),
+  var svg = d3.select("#dag"),
       svgGroup = svg.append("g");
 
   // Run the renderer. This is what draws the final graph.
