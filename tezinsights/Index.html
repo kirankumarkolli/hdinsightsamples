@@ -348,16 +348,36 @@ text {
     }
   }
 
-  // Normalize values 
-  for (var e in columns) {
-    var name = columns[e];
-    columnMap[name].push(name);
-  }
-
   var columns = [];
   for (var i in columnMap) {
     var v = columnMap[i];
-    columns.push(columnMap[i]);
+
+    var v1 = [];
+    v1.push(v[0]);
+
+    var isTime = v[0].match(/time/i);
+    var isBytes = v[0].match(/bytes/i);
+    var isRecords = v[0].match(/records/i);
+
+    for (var j=1; j < v.length; j++) {
+      var nv = v[j]; 
+
+      if (isTime) {
+        nv = nv / (1000); // seconds
+      }
+
+      if (isBytes) {
+        nv = nv / (1024 * 1024); // MB
+      }
+
+      if (isRecords) {
+        nv = nv / (1024 * 1024); // Million records
+      }
+
+      v1.push(nv.toFixed(2));
+    }
+
+    columns.push(v1);
   }
 
   var chart = c3.generate({
