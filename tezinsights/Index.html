@@ -5,11 +5,15 @@
 <title>TEZ Insights</title>
 
 <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
 <script language="javascript" type="text/javascript" src="http://cpettitt.github.io/project/dagre-d3/latest/dagre-d3.js"></script>
+<script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.11/c3.min.js"></script>
 <script language="javascript" type="text/javascript" src="hive_20160602021252_cdf6a0a4-d0d0-4e0c-bedb-69505fd0e2a0\query.js"></script>
 <script language="javascript" type="text/javascript" src="hive_20160602021252_cdf6a0a4-d0d0-4e0c-bedb-69505fd0e2a0\dag.js"></script>
 <script language="javascript" type="text/javascript" src="hive_20160602021252_cdf6a0a4-d0d0-4e0c-bedb-69505fd0e2a0\vertices.js"></script>
 <script language="javascript" type="text/javascript" src="hive_20160602021252_cdf6a0a4-d0d0-4e0c-bedb-69505fd0e2a0\tasks.js"></script>
+
+<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.11/c3.css">
 
 <h1>TEZ INSIGHTS (proto)</h1>
 
@@ -25,7 +29,7 @@ text {
   font-size: 14px;
 }
 
-x.node rect {
+.node rect {
   stroke: #999;
   fill: #fff;
   stroke-width: 1.5px;
@@ -50,6 +54,7 @@ x.node rect {
 </style>
 
 <svg id="dag" width=1500 height=900></svg>
+<div id="chart"></div>
 
 <section>
 <p>TEZ DAG from ATS
@@ -292,7 +297,28 @@ x.node rect {
   svgGroup.attr("transform", "translate(" + xCenterOffset + ", 20)");
   svg.attr("height", g.graph().height + 40);
 
+  /*
   var data = [ { x: "A", y: 10 },  { x: "B", y: 5 },  { x: "C", y: 15 },  { x: "D", y: 25 },  { x: "E", y: 15 } ];
   addChart(data);
+  */ 
+
+  var chart = c3.generate({
+    bindto: "#chart",
+    data: {
+        columns: [
+            ['InputRecords', 30, 200, 100, 400, 150, 250, 50, 100, 250],
+            ['OutputRecords', 1000, 2000, 3000, 1500, 2000, 1000, 1100, 1500, 200]
+        ],
+        order: function(a, b) { 
+          return true;
+        },
+    },
+    axis: {
+        x: {
+            type: 'category',
+            categories: ['task1', 'task2', 'task3', 'task4', 'task5', 'task6', 'task7', 'task8', 'task9']
+        }
+    }
+});
 
 </script>
