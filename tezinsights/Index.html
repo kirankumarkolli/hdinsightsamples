@@ -302,21 +302,73 @@ text {
   addChart(data);
   */ 
 
+  var columns = ["TimeTaken", "GC_TIME_MILLIS", "WASB_BYTES_READ", "INPUT_RECORDS_PROCESSED" ];
+  var tasks = [];
+  var columnMap = {};
+  for (var i in columns) {
+    columnMap[columns[i]] = [];
+  }
+
+  for (var e in columns) {
+    columnMap[columns[e]].push(columns[e]);
+  }
+
+  for (var i in tasksJson.entities) {
+    var task = tasksJson.entities[i];
+
+    var currentColumn = {};
+    tasks.push(task.entity);
+
+    var executionTime = task.otherinfo.timeTaken;
+    currentColumn["TimeTaken"] = executionTime;
+
+    var counterGroups = task.otherinfo.counters.counterGroups;
+    for (var j in counterGroups) {
+      var group = counterGroups[j];
+      for (var k in group.counters) {
+        var counter = group.counters[k];
+
+        var name = counter.counterName;
+        var value = counter.counterValue;
+
+        if (columns.includes(name)) {
+          currentColumn[name] = value;
+        }
+      }
+    }
+
+    for (var e in columns) {
+      var name = columns[e];
+
+      if (name in currentColumn) {
+        columnMap[name].push(currentColumn[name]);
+      } else {
+        columnMap[name].push(0);
+      }
+    }
+  }
+
+  // Normalize values 
+  for (var e in columns) {
+    var name = columns[e];
+    columnMap[name].push(name);
+  }
+
+  var columns = [];
+  for (var i in columnMap) {
+    var v = columnMap[i];
+    columns.push(columnMap[i]);
+  }
+
   var chart = c3.generate({
     bindto: "#chart",
     data: {
-        columns: [
-            ['InputRecords', 30, 200, 100, 400, 150, 250, 50, 100, 250],
-            ['OutputRecords', 1000, 2000, 3000, 1500, 2000, 1000, 1100, 1500, 200]
-        ],
-        order: function(a, b) { 
-          return true;
-        },
+        columns: columns,
     },
     axis: {
         x: {
             type: 'category',
-            categories: ['task1', 'task2', 'task3', 'task4', 'task5', 'task6', 'task7', 'task8', 'task9']
+            categories: tasks,
         }
     }
 });
