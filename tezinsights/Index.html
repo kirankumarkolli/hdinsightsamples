@@ -69,6 +69,23 @@ text {
 <script id="js">
   // Create the input graph
   function LoadOpTree(compsitionList, scope, opName, opObj) {
+    LoadOpTreeInternal(compsitionList, scope, opName, opObj);
+
+    // HACK: Handle duplciate names. Add index as suffix for uniqness
+    for (var i in compsitionList) {
+      var n = compsitionList[i];
+      n.id = n.id + i;
+      var nxtId = parseInt(i) + 1;
+
+      for (var j in n.adjacencies) {
+        var adj = n.adjacencies[j];
+        adj.id = adj.id + nxtId;
+      }
+    }
+  }
+
+
+  function LoadOpTreeInternal(compsitionList, scope, opName, opObj) {
     var compositionNode = {
         id: scope + "/" + opName,
         name: opName,
