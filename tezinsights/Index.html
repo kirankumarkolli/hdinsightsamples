@@ -287,16 +287,17 @@ text {
   renderSvgGraph("#dag", g);
   renderSvgGraph("#opdag", opg);
 
+
+  /*
+  *
+  *  2D plotting of 
+  *  COUNTERS
+  */
+
   var columns = ["TimeTaken", "GC_TIME_MILLIS", "WASB_BYTES_READ", "INPUT_RECORDS_PROCESSED" ];
   var tasks = [];
-  var columnMap = {};
-  for (var i in columns) {
-    columnMap[columns[i]] = [];
-  }
-
-  for (var e in columns) {
-    columnMap[columns[e]].push(columns[e]);
-  }
+  var rows = [];
+  rows.push(columns);
 
   for (var i in tasksJson.entities) {
     var task = tasksJson.entities[i];
@@ -322,47 +323,34 @@ text {
       }
     }
 
+    var row = [];
     for (var e in columns) {
       var name = columns[e];
+      var value = 0;
 
       if (name in currentColumn) {
-        columnMap[name].push(currentColumn[name]);
-      } else {
-        columnMap[name].push(0);
-      }
-    }
-  }
+        value = currentColumn[name];
+      } 
 
-  var columns = [];
-  for (var i in columnMap) {
-    var v = columnMap[i];
-
-    var v1 = [];
-    v1.push(v[0]);
-
-    var isTime = v[0].match(/time/i);
-    var isBytes = v[0].match(/bytes/i);
-    var isRecords = v[0].match(/records/i);
-
-    for (var j=1; j < v.length; j++) {
-      var nv = v[j]; 
+      var isTime = name.match(/time/i);
+      var isBytes = name.match(/bytes/i);
+      var isRecords = name.match(/records/i);
 
       if (isTime) {
-        nv = nv / (1000); // seconds
+        value = value / (1000); // seconds
       }
 
       if (isBytes) {
-        nv = nv / (1024 * 1024); // MB
+        value = value / (1024 * 1024); // MB
       }
 
       if (isRecords) {
-        nv = nv / (1024 * 1024); // Million records
+        value = value / (1024 * 1024); // Million records
       }
 
-      v1.push(nv.toFixed(2));
+      row.push(value);
     }
-
-    columns.push(v1);
+    rows.push(row);
   }
 
   var charts = document.getElementById("charts");
@@ -373,7 +361,7 @@ text {
   var chart = c3.generate({
     bindto: "#chart",
     data: {
-        columns: columns,
+        rows: rows,
     },
     axis: {
         x: {
