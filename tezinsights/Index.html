@@ -295,18 +295,14 @@ text {
   */
 
   var columns = ["TimeTaken", "GC_TIME_MILLIS", "WASB_BYTES_READ", "INPUT_RECORDS_PROCESSED" ];
-  var tasks = [];
-  var rows = [];
-  rows.push(columns);
+  var rowsMap = {};
 
   for (var i in tasksJson.entities) {
     var task = tasksJson.entities[i];
 
-    var currentColumn = {};
-    tasks.push(task.entity);
-
+    var extractedRow = {};
     var executionTime = task.otherinfo.timeTaken;
-    currentColumn["TimeTaken"] = executionTime;
+    extractedRow["TimeTaken"] = executionTime;
 
     var counterGroups = task.otherinfo.counters.counterGroups;
     for (var j in counterGroups) {
@@ -318,7 +314,7 @@ text {
         var value = counter.counterValue;
 
         if (columns.includes(name)) {
-          currentColumn[name] = value;
+          extractedRow[name] = value;
         }
       }
     }
@@ -328,8 +324,8 @@ text {
       var name = columns[e];
       var value = 0;
 
-      if (name in currentColumn) {
-        value = currentColumn[name];
+      if (name in extractedRow) {
+        value = extractedRow[name];
       } 
 
       var isTime = name.match(/time/i);
@@ -350,24 +346,38 @@ text {
 
       row.push(value);
     }
-    rows.push(row);
+
+    rowsMap[task.entity] = row;
   }
 
-  var charts = document.getElementById("charts");
-  var chartNode = document.createElement("div");
-  chartNode.setAttribute("id", "chart");
-  charts.appendChild(chartNode);
 
-  var chart = c3.generate({
-    bindto: "#chart",
-    data: {
-        rows: rows,
-    },
-    axis: {
-        x: {
-            type: 'category',
-            categories: tasks,
-        }
-    }
-});
+  nodes.forEach(function(data){
+    var charts = document.getElementById("charts");
+    var chartNode = document.createElement("div");
+    chartNode.setAttribute("id", data.VertexId);
+    charts.appendChild(chartNode);
+
+    // Filter for current vertex tasks 
+    rows = [];
+    rows.push(columns);
+
+    var tasks = data.Tasks;
+    tasks.forEach(function(taskId) {
+        rows.push(rowsMap[taskId]);
+      });
+
+
+    var chart = c3.generate({
+      bindto: "#" + data.VertexId,
+      data: {
+          rows: rows,
+      },
+      axis: {
+          x: {
+              type: 'category',
+              categories: tasks,
+          }
+      }
+    });
+  });
 </script>
