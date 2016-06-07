@@ -17,7 +17,7 @@ namespace tezatsdownloader {
             ServicePointManager.MaxServicePoints = 48;
 
             var clusterDns = "https://kkhs2tst.azurehdinsight.net/";
-            var httpUserName = ;
+            var httpUserName = "admin";
             var httpPassword = ;
 
             // var basePath = GetClusterBasePath(clusterDns, httpUserName, httpPassword);
@@ -67,7 +67,8 @@ namespace tezatsdownloader {
                 var eValue = firstElement["entity"];
 
                 settings[etype.Value<string>()] = eValue.Value<string>();
-                File.WriteAllText(Path.Combine(rootDir, fileName), jPayload.ToString());
+                var varName = "var " + Path.GetFileNameWithoutExtension(fileName) + "Json=";
+                File.WriteAllText(Path.Combine(rootDir, fileName), varName + jPayload.ToString());
             }
         }
 
