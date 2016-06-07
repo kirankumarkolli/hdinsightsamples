@@ -16,15 +16,15 @@ namespace tezatsdownloader {
             ServicePointManager.UseNagleAlgorithm = false;
             ServicePointManager.MaxServicePoints = 48;
 
-            var clusterDns = "https://kkhs2tst.azurehdinsight.net/";
+            var clusterDns = "";
             var httpUserName = "admin";
-            var httpPassword = ;
+            var httpPassword = "";
 
             // var basePath = GetClusterBasePath(clusterDns, httpUserName, httpPassword);
             // var qids = GetQueryIds(clusterDns, httpUserName, httpPassword);
 
             var opRootDir = @"D:\code\hdisamples\tezinsights";
-            var queryId = "hive_20160602021252_cdf6a0a4-d0d0-4e0c-bedb-69505fd0e2a0";
+            var queryId = "hive_20160607040030_b737b575-7da1-4f62-88dd-2454cfdeb6c5";
             DumpQueryDetails(queryId, opRootDir, clusterDns, httpUserName, httpPassword);
         }
 
@@ -35,16 +35,20 @@ namespace tezatsdownloader {
             }
 
             var downloadMap = new Dictionary<string, string> {
-                { "query.json", "ws/v1/timeline/HIVE_QUERY_ID/{HIVE_QUERY_ID}" },
-                { "dag.json", "ws/v1/timeline/TEZ_DAG_ID?primaryFilter=callerId:{HIVE_QUERY_ID}" },
-                { "vertices.json", "ws/v1/timeline/TEZ_VERTEX_ID?primaryFilter=TEZ_DAG_ID:{TEZ_DAG_ID}" },
-                { "tasks.json", "ws/v1/timeline/TEZ_TASK_ID?primaryFilter=TEZ_DAG_ID:{TEZ_DAG_ID}" },
-                { "tasks_attempts.json", "ws/v1/timeline/TEZ_TASK_ATTEMPT_ID?primaryFilter=TEZ_DAG_ID:{TEZ_DAG_ID}" },
+                { "query.js", "ws/v1/timeline/HIVE_QUERY_ID/{HIVE_QUERY_ID}" },
+                { "dag.js", "ws/v1/timeline/TEZ_DAG_ID?primaryFilter=callerId:{HIVE_QUERY_ID}" },
+                { "vertices.js", "ws/v1/timeline/TEZ_VERTEX_ID?primaryFilter=TEZ_DAG_ID:{TEZ_DAG_ID}" },
+                { "tasks.js", "ws/v1/timeline/TEZ_TASK_ID?primaryFilter=TEZ_DAG_ID:{TEZ_DAG_ID}" },
+                { "tasks_attempts.js", "ws/v1/timeline/TEZ_TASK_ATTEMPT_ID?primaryFilter=TEZ_DAG_ID:{TEZ_DAG_ID}" },
                 };
 
             var settings = new Dictionary<string, string> {
                 { "HIVE_QUERY_ID", qid }
             };
+
+            // Write app.json file 
+            var appfile = Path.Combine(directory, "app.js");
+            File.WriteAllText(appfile, string.Empty);
 
             foreach (var e in downloadMap) {
                 var fileName = e.Key;
@@ -56,19 +60,27 @@ namespace tezatsdownloader {
 
                 // Downloading from urlSuffix
                 var jPayload = GetAllEntities(dnsName + urlSuffix, userName, passwd);
-                var firstElement = jPayload.SelectToken("");
-                if (jPayload.Children().Count() == 1) {
-                    // List root element
-                    var rootName = jPayload.Children().First().Path;
-                    firstElement = jPayload[rootName][0];
+                var payload = jPayload.ToString();
+                if (payload.Contains("NotFoundException")) {
+                    payload = "{ }";
+                } else {
+                    var firstElement = jPayload.SelectToken("");
+                    if (jPayload.Children().Count() == 1) {
+                        // List root element
+                        var rootName = jPayload.Children().First().Path;
+                        firstElement = jPayload[rootName][0];
+                    }
+
+                    var etype = firstElement["entitytype"];
+                    var eValue = firstElement["entity"];
+
+                    settings[etype.Value<string>()] = eValue.Value<string>();
                 }
 
-                var etype = firstElement["entitytype"];
-                var eValue = firstElement["entity"];
-
-                settings[etype.Value<string>()] = eValue.Value<string>();
                 var varName = "var " + Path.GetFileNameWithoutExtension(fileName) + "Json=";
-                File.WriteAllText(Path.Combine(rootDir, fileName), varName + jPayload.ToString());
+                File.WriteAllText(Path.Combine(rootDir, fileName), varName + payload);
+                File.AppendAllLines(appfile, new string[] { string.Empty, string.Empty});
+                File.AppendAllText(appfile, varName + payload);
             }
         }
 
