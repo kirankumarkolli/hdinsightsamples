@@ -1,4 +1,3 @@
-
 <!doctype html>
 
 <meta charset="utf-8">
@@ -59,8 +58,7 @@ text {
 </div>
 <br>
 <div>
-<div id="chart"></div>
-</div>
+<div id="charts"></div>
 
 <section>
 <p>TEZ DAG from ATS
@@ -367,6 +365,11 @@ text {
     columns.push(v1);
   }
 
+  var charts = document.getElementById("charts");
+  var chartNode = document.createElement("div");
+  chartNode.setAttribute("id", "chart");
+  charts.appendChild(chartNode);
+
   var chart = c3.generate({
     bindto: "#chart",
     data: {
@@ -379,5 +382,4 @@ text {
         }
     }
 });
-
 </script>
