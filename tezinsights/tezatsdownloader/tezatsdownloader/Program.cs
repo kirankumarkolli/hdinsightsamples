@@ -82,6 +82,8 @@ namespace tezatsdownloader {
                 File.AppendAllLines(appfile, new string[] { string.Empty, string.Empty});
                 File.AppendAllText(appfile, varName + payload);
             }
+
+            File.Copy(appfile, Path.Combine(directory, qid + ".js"), overwrite: true);
         }
 
         static JObject GetAllEntities(string url, string userName, string password) {
