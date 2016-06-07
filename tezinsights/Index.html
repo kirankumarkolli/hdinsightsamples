@@ -344,7 +344,7 @@ text {
         value = value / (1024 * 1024); // Million records
       }
 
-      row.push(value);
+      row.push(value.toFixed(2));
     }
 
     rowsMap[task.entity] = row;
