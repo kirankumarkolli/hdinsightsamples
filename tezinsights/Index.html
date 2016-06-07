@@ -114,7 +114,7 @@ text {
     render(d3.selectAll(id + " g"), g);
 
     // Center the graph
-    var xCenterOffset = (960 - g.graph().width) / 2;
+    var xCenterOffset = (svg[0][0].getAttribute("width") - g.graph().width) / 2;
     svgGroup.attr("transform", "translate(" + xCenterOffset + ", 20)");
     svg.attr("height", g.graph().height + 40);
   }

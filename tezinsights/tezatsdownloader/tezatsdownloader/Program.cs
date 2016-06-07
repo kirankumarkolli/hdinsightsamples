@@ -16,9 +16,9 @@ namespace tezatsdownloader {
             ServicePointManager.UseNagleAlgorithm = false;
             ServicePointManager.MaxServicePoints = 48;
 
-            var clusterDns = "";
+            var clusterDns = "https://agnielsentest.azurehdinsight.net/";
             var httpUserName = "admin";
-            var httpPassword = "";
+            var httpPassword = "NielsenRules123!";
 
             // var basePath = GetClusterBasePath(clusterDns, httpUserName, httpPassword);
             // var qids = GetQueryIds(clusterDns, httpUserName, httpPassword);
