@@ -15,7 +15,7 @@ namespace HS2Tests
         protected int NumOfSessions { get; set; }
 
         protected List<HDIHS2Session> Sessions { get; set; }
-        protected ConcurrentQueue<string> Slots { get; set; }
+        protected ConcurrentQueue<Tuple<string, string>> Slots { get; set; }
         protected ConcurrentBag<HS2ActivityRecord> Activities { get; set; }
 
         public HDIHS2SessionManager(string connectionString, int sessionCount)
@@ -31,20 +31,30 @@ namespace HS2Tests
         /// <summary>
         /// Executed same query on N sessions for given duration
         /// </summary>
-        public void RunQuery(string query, int parallism, TimeSpan duration)
+        public void RunQuery(int parallism, Func<string, Tuple<string, string>> slotQuery, TimeSpan duration)
         {
-            this.Slots = new ConcurrentQueue<string>();
+            this.Slots = new ConcurrentQueue<Tuple<string, string>>();
+            List<Task> initQueries = new List<Task>();
             for (int i=0; i< parallism; i++)
             {
-                this.Slots.Enqueue("S" + i);
+                var slotName = "S" + i;
+                var queries = slotQuery(slotName);
+
+                // Execute the init queries and then place the 
+                initQueries.Add(ExecQuery(this.Sessions.ElementAt(i), slotName, queries.Item1));
+
+                var slotObject = new Tuple<string, string>(slotName, queries.Item2);
+                this.Slots.Enqueue(slotObject);
             }
+
+            Task.WaitAll(initQueries.ToArray());
 
             // Synchorous execution till duration 
             var tokenSource = new CancellationTokenSource();
             var executors = new List<Task>();
             foreach (var e in this.Sessions)
             {
-                executors.Add(ExecuteSession(e, query, tokenSource.Token));
+                executors.Add(ExecuteSession(e, tokenSource.Token));
             }
 
             Task.Delay(duration).Wait();
@@ -53,6 +63,12 @@ namespace HS2Tests
             Task.WaitAll(executors.ToArray());
 
             // TODO: Collect the executor (TBD) results
+        }
+
+        internal async Task ExecQuery(HDIHS2Session session, string slotName, string query)
+        {
+            await Task.Yield();
+            session.ExecuteQuery(query, slotName, publishActivities: false);
         }
 
         internal void NotifyActivity(HS2ActivityRecord activity)
@@ -69,19 +85,19 @@ namespace HS2Tests
             }
         }
 
-        protected async Task ExecuteSession(HDIHS2Session session, string query, CancellationToken token)
+        protected async Task ExecuteSession(HDIHS2Session session, CancellationToken token)
         {
             // Wait 1M before startign execution 
             await Task.Delay(TimeSpan.FromMinutes(1));
 
             while(! token.IsCancellationRequested)
             {
-                string slotName = string.Empty;
-                if (this.Slots.TryDequeue(out slotName))
+                Tuple<string, string> slotDetails = new Tuple<string, string>(string.Empty, string.Empty);
+                if (this.Slots.TryDequeue(out slotDetails))
                 {
                     try
                     {
-                        session.ExecuteQuery(query, slotName);
+                        session.ExecuteQuery(slotDetails.Item2, slotDetails.Item1, publishActivities: true);
                     }
                     catch (Exception ex)
                     {
@@ -89,7 +105,7 @@ namespace HS2Tests
                     }
                     finally
                     {
-                        this.Slots.Enqueue(slotName);
+                        this.Slots.Enqueue(slotDetails);
                     }
 
                 }

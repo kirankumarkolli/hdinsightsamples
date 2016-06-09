@@ -56,8 +56,68 @@ namespace HS2Tests
 
             }
         }
-
         public void ExecuteQuery(string query, string correlationInfo, bool publishActivities)
+        {
+            var queries = query.Split(new char[] { ';' });
+            foreach (var q in queries)
+            {
+                if (q.ToLowerInvariant().StartsWith("select"))
+                {
+                    this.ExecuteCompactQuery(q, correlationInfo, publishActivities);
+                }
+                else
+                {
+                    this.ExecuteCompactNonQuery(q, correlationInfo, publishActivities);
+                }
+
+            }
+        }
+
+        public void ExecuteCompactNonQuery(string query, string correlationInfo, bool publishActivities)
+        {
+            EnsureInit();
+
+            var activity = new HS2ActivityRecord()
+            {
+                StartTime = DateTimeOffset.UtcNow,
+                Name = HS2ActivityName.ExecuteQueryOnly,
+                SessionName = this.Name,
+                Status = HS2ActivityState.NOINIT,
+            };
+
+            try
+            {
+                using (var cmd = this.Connection.CreateCommand())
+                {
+                    cmd.CommandText = query;
+                    cmd.CommandType = System.Data.CommandType.Text;
+                    cmd.ExecuteNonQuery();
+                }
+
+                activity.Status = HS2ActivityState.SUCCESS;
+                if (publishActivities)
+                {
+                    this.SessionManager.NotifyActivity(activity);
+                }
+            }
+            catch
+            {
+                activity.EndTime = DateTimeOffset.UtcNow;
+                activity.Status = HS2ActivityState.FAIL;
+
+                if (publishActivities)
+                {
+                    this.SessionManager.NotifyActivity(activity);
+                }
+
+                this.Connection.Dispose();
+                this.Connection = null;
+
+                throw;
+            }
+        }
+
+        public void ExecuteCompactQuery(string query, string correlationInfo, bool publishActivities)
         {
             EnsureInit();
 
