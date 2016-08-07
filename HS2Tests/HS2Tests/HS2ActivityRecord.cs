@@ -27,6 +27,6 @@ namespace HS2Tests
         public HS2ActivityName Name { get; set; }
         public string SessionName { get; set; }
         public HS2ActivityState Status { get; set; }
-        public string Details { get; set; }
+        public int ResultSetCount { get; set; }
     }
 }

@@ -31,8 +31,11 @@ namespace HS2Tests
         /// <summary>
         /// Executed same query on N sessions for given duration
         /// </summary>
-        public void RunQuery(int parallism, Func<string, Tuple<string, string>> slotQuery, TimeSpan duration)
+        public void RunQuery(int parallism, Func<string, Tuple<string, string>> slotQuery, int numIter)
         {
+            // Clear activity cache 
+            this.Activities = new ConcurrentBag<HS2ActivityRecord>();
+
             this.Slots = new ConcurrentQueue<Tuple<string, string>>();
             List<Task> initQueries = new List<Task>();
             for (int i=0; i< parallism; i++)
@@ -41,7 +44,8 @@ namespace HS2Tests
                 var queries = slotQuery(slotName);
 
                 // Execute the init queries and then place the 
-                initQueries.Add(ExecQuery(this.Sessions.ElementAt(i), slotName, queries.Item1));
+                // TODO: Fix the init query set-up issues 
+                // initQueries.Add(ExecQuery(this.Sessions.ElementAt(i), slotName, queries.Item1));
 
                 var slotObject = new Tuple<string, string>(slotName, queries.Item2);
                 this.Slots.Enqueue(slotObject);
@@ -54,15 +58,12 @@ namespace HS2Tests
             var executors = new List<Task>();
             foreach (var e in this.Sessions)
             {
-                executors.Add(ExecuteSession(e, tokenSource.Token));
+                executors.Add(ExecuteSession(e, numIter));
             }
-
-            Task.Delay(duration).Wait();
-            tokenSource.Cancel();
 
             Task.WaitAll(executors.ToArray());
 
-            // TODO: Collect the executor (TBD) results
+            // Save and clearr all activities into 
         }
 
         internal async Task ExecQuery(HDIHS2Session session, string slotName, string query)
@@ -85,23 +86,24 @@ namespace HS2Tests
             }
         }
 
-        protected async Task ExecuteSession(HDIHS2Session session, CancellationToken token)
+        protected async Task ExecuteSession(HDIHS2Session session, int numIter)
         {
             // Wait 1M before startign execution 
             await Task.Delay(TimeSpan.FromMinutes(1));
 
-            while(! token.IsCancellationRequested)
+            for (int i=0; i< numIter; i++)
             {
                 Tuple<string, string> slotDetails = new Tuple<string, string>(string.Empty, string.Empty);
                 if (this.Slots.TryDequeue(out slotDetails))
                 {
                     try
                     {
+                        Trace.TraceInformation("Slot {0} started new execution", slotDetails.Item1);
                         session.ExecuteQuery(slotDetails.Item2, slotDetails.Item1, publishActivities: true);
                     }
                     catch (Exception ex)
                     {
-                        Trace.TraceError(ex.ToString());
+                        Trace.TraceError("Slot {0} execution failed with", ex.ToString());
                     }
                     finally
                     {

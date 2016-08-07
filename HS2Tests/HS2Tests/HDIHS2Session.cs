@@ -170,7 +170,7 @@ namespace HS2Tests
 
                     activity.EndTime = DateTimeOffset.UtcNow;
                     activity.Status = HS2ActivityState.SUCCESS;
-                    activity.Details = count.ToString();
+                    activity.ResultSetCount = count;
 
                     if (publishActivities)
                     {
