@@ -1,0 +1,383 @@
+<!doctype html>
+
+<meta charset="utf-8">
+<title>TEZ Insights</title>
+
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+<script language="javascript" type="text/javascript" src="http://cpettitt.github.io/project/dagre-d3/latest/dagre-d3.js"></script>
+<script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.11/c3.min.js"></script>
+<script language="javascript" type="text/javascript" src="app.js"></script>
+
+<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.11/c3.css">
+
+<h1>TEZ INSIGHTS (proto)</h1>
+
+<style id="css">
+/* This sets the color for "TK" nodes to a light blue green. */
+g.type-TK > rect {
+  fill: #00ffd0;
+}
+
+text {
+  font-weight: 300;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
+  font-size: 14px;
+}
+
+.node rect {
+  stroke: #999;
+  fill: #fff;
+  stroke-width: 1.5px;
+}
+
+.edgePath path {
+  stroke: #333;
+  stroke-width: 1.5px;
+}
+
+.axis text {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+</style>
+
+<div>
+<svg id="dag"  width="2000" height="2000"></svg>
+</div>
+<br>
+<div>
+<svg id="opdag" width="2000" height="2000"></svg>
+</div>
+<br>
+<div>
+<div id="charts"></div>
+
+<section>
+<p>TEZ DAG from ATS
+</section>
+
+<script id="js">
+  // Create the input graph
+  function LoadOpTree(compsitionList, scope, opName, opObj) {
+    LoadOpTreeInternal(compsitionList, scope, opName, opObj);
+
+    // HACK: Handle duplciate names. Add index as suffix for uniqness
+    for (var i in compsitionList) {
+      var n = compsitionList[i];
+      n.id = n.id + i;
+      var nxtId = parseInt(i) + 1;
+
+      for (var j in n.adjacencies) {
+        var adj = n.adjacencies[j];
+        adj.id = adj.id + nxtId;
+      }
+    }
+  }
+
+
+  function LoadOpTreeInternal(compsitionList, scope, opName, opObj) {
+    var compositionNode = {
+        id: scope + "/" + opName,
+        name: opName,
+        adjacencies: [],
+      };
+    compsitionList.push(compositionNode);
+
+    for (var c in opObj["children"]) {
+      compositionNode.adjacencies.push({ id: scope + "/" + c });
+      LoadOpTree(compsitionList, scope, c, opObj["children"][c]);
+    }
+  }
+
+  function processEdge(nodes, from, to) {
+    for (var i=0; i< nodes.length; i++) {
+      var n = nodes[i];
+      if (n.id === from) {
+        n.adjacencies.push({ id: to });
+
+        // TODO: Fix it in single loop
+        // Link composition as well 
+        for (var j=0; j < nodes.length; j++) {
+          var m = nodes[j];
+          if (m.id === to) {
+            var l = n.composition[n.composition.length - 1];
+            var f = m.composition[0];
+            l.adjacencies.push({ id: f.id });
+          }
+        }
+      }
+    }
+  }
+
+  function renderSvgGraph(id, g) {
+
+    // Set up an SVG group so that we can translate the final graph.
+    var svg = d3.select(id);
+    var svgGroup = svg.append("g");
+
+    // Run the renderer. This is what draws the final graph.
+    // Create the renderer
+    var render = new dagreD3.render();
+    render(d3.selectAll(id + " g"), g);
+
+    // Center the graph
+    var xCenterOffset = (svg[0][0].getAttribute("width") - g.graph().width) / 2;
+    svgGroup.attr("transform", "translate(" + xCenterOffset + ", 20)");
+    svg.attr("height", g.graph().height + 40);
+  }
+
+  var nodes = [];
+  if ("otherinfo" in queryJson) {
+    var plan = JSON.parse(queryJson.otherinfo.QUERY).queryPlan;
+    var stagePlans = plan["STAGE PLANS"];
+    for (var stage in stagePlans) {
+      if (stagePlans[stage].hasOwnProperty("Tez")) {
+        // Prepare the graph payload
+        var tez = stagePlans[stage].Tez;
+        for (var p in tez["Vertices:"]) {
+          var currnetNode = {
+                id: p, 
+                name: p,
+                adjacencies: [],
+                composition: [],
+            };
+          nodes.push(currnetNode);
+
+          // Only one operator tree
+          var opTree = tez["Vertices:"][p];
+          if (opTree.hasOwnProperty("Map Operator Tree:")) {
+            for (var mapEntry in opTree["Map Operator Tree:"]) {
+              for (var op in opTree["Map Operator Tree:"][mapEntry]) {
+                LoadOpTree(currnetNode.composition, p, op, opTree["Map Operator Tree:"][mapEntry][op]);
+              }
+            }
+          } 
+
+          if (opTree.hasOwnProperty("Reduce Operator Tree:")) {
+            for (var op in opTree["Reduce Operator Tree:"]) {
+              LoadOpTree(currnetNode.composition, p, op, opTree["Reduce Operator Tree:"][op]);
+            }
+          } 
+
+        }
+
+        for (var nodeId in tez["Edges:"]) {
+          var edgeObj = tez["Edges:"][nodeId];
+          if (Array.isArray(edgeObj)) {
+            for (var ei in edgeObj) {
+              var parentId = edgeObj[ei].parent;
+              processEdge(nodes, parentId, nodeId);
+            }
+            // alert("array");
+          } else {
+            var parentId = edgeObj.parent;
+            processEdge(nodes, parentId, nodeId);
+          }
+        }
+
+        // Only one TEZ processor expected
+        break;
+      }
+    }
+  }
+
+  // Annotate nodes with details from dag.json
+  var vertexIdMapping = dagJson.entities[0].otherinfo.vertexNameIdMapping;
+  for (var e in vertexIdMapping) {
+    for (n in nodes) {
+      if (nodes[n].id === e) {
+        nodes[n].VertexId = vertexIdMapping[e];
+
+        for (var e1 in verticesJson.entities) {
+          var entry = verticesJson.entities[e1];
+          if (entry.entity === nodes[n].VertexId) {
+            // Found vertex entry attach the task entries
+            nodes[n].Tasks = entry.relatedentities.TEZ_TASK_ID;
+          }
+        }
+      }
+    }
+  }
+
+  // Attach tasks to the nodes
+
+
+  var edges = dagJson.entities[0].otherinfo.dagPlan.edges;
+  for (var edge in edges) {
+    var inV = edges[edge].inputVertexName;
+    var outV = edges[edge].outputVertexName;
+
+    var label = [];
+    for (var p in edges[edge]) {
+      if (p.endsWith("Type")) {
+        label.push(p + "=" + edges[edge][p]);
+      }
+    }
+
+    for (var n in nodes) {
+      if (nodes[n].id === inV) {
+        // set label
+        for (var adj in nodes[n].adjacencies) {
+          if(nodes[n].adjacencies[adj].id === outV) {
+            nodes[n].adjacencies[adj].label = label.join("\n");
+          }
+        }
+      }
+    }
+  }
+
+  // Render the graph 
+  // http://cpettitt.github.io/project/dagre-d3/latest/demo/sentence-tokenization.html
+  var g = new dagreD3.graphlib.Graph({compound:true})
+    .setGraph({})
+    .setDefaultEdgeLabel(function() { return {}; });
+
+  var opg = new dagreD3.graphlib.Graph({compound:true})
+    .setGraph({})
+    .setDefaultEdgeLabel(function() { return {}; });
+
+  for (var i=0; i< nodes.length; i++) {
+    var n = nodes[i];
+    g.setNode(n.id, { label: n.name, class: "type-TOP" });
+    opg.setNode(n.id + "grp", { label: n.id + "grp", labelpos:"l", clusterLabelPos: "top", class: "type-TOP", style: 'fill: #d3d7e8' });
+
+    for (var e in n.composition) {
+      opg.setNode(n.composition[e].id, {label: n.composition[e].name, class: "type-TOP"});
+      opg.setParent(n.composition[e].id, n.id + "grp");
+    }
+
+  }
+
+  g.nodes().forEach(function(v) {
+    var node = g.node(v);
+    // Round the corners of the nodes
+    node.rx = node.ry = 5;
+  });
+
+  opg.nodes().forEach(function(v) {
+    var node = opg.node(v);
+    // Round the corners of the nodes
+    node.rx = node.ry = 5;
+  });
+
+  for (var i=0; i< nodes.length; i++) {
+    var n = nodes[i];
+    n.adjacencies.forEach(function(e){
+      console.log(n.id, e.id, "label", e.label);
+      g.setEdge(n.id, e.id); //, { label: e.label });
+    });
+
+    for (var e in n.composition) {
+      var e1 = n.composition[e];
+      e1.adjacencies.forEach(function(a){
+          console.log(e1.id, a.id);
+          opg.setEdge(e1.id, a.id); //, { label: e.label });
+        });
+    }
+  }
+
+  renderSvgGraph("#dag", g);
+  renderSvgGraph("#opdag", opg);
+
+
+  /*
+  *
+  *  2D plotting of 
+  *  COUNTERS
+  */
+
+  var columns = ["TimeTaken", "GC_TIME_MILLIS", "WASB_BYTES_READ", "INPUT_RECORDS_PROCESSED" ];
+  var rowsMap = {};
+
+  for (var i in tasksJson.entities) {
+    var task = tasksJson.entities[i];
+
+    var extractedRow = {};
+    var executionTime = task.otherinfo.timeTaken;
+    extractedRow["TimeTaken"] = executionTime;
+
+    var counterGroups = task.otherinfo.counters.counterGroups;
+    for (var j in counterGroups) {
+      var group = counterGroups[j];
+      for (var k in group.counters) {
+        var counter = group.counters[k];
+
+        var name = counter.counterName;
+        var value = counter.counterValue;
+
+        if (columns.includes(name)) {
+          extractedRow[name] = value;
+        }
+      }
+    }
+
+    var row = [];
+    for (var e in columns) {
+      var name = columns[e];
+      var value = 0;
+
+      if (name in extractedRow) {
+        value = extractedRow[name];
+      } 
+
+      var isTime = name.match(/time/i);
+      var isBytes = name.match(/bytes/i);
+      var isRecords = name.match(/records/i);
+
+      if (isTime) {
+        value = value / (1000); // seconds
+      }
+
+      if (isBytes) {
+        value = value / (1024 * 1024); // MB
+      }
+
+      if (isRecords) {
+        value = value / (1024 * 1024); // Million records
+      }
+
+      row.push(value.toFixed(2));
+    }
+
+    rowsMap[task.entity] = row;
+  }
+
+
+  nodes.forEach(function(data){
+    var charts = document.getElementById("charts");
+    var chartNode = document.createElement("div");
+    chartNode.setAttribute("id", data.VertexId);
+    charts.appendChild(chartNode);
+
+    // Filter for current vertex tasks 
+    rows = [];
+    rows.push(columns);
+
+    var tasks = data.Tasks;
+    tasks.forEach(function(taskId) {
+        rows.push(rowsMap[taskId]);
+      });
+
+
+    var chart = c3.generate({
+      bindto: "#" + data.VertexId,
+      data: {
+          rows: rows,
+      },
+      axis: {
+          x: {
+              type: 'category',
+              categories: tasks,
+          }
+      }
+    });
+  });
+</script>
