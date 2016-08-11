@@ -34,7 +34,7 @@
         }
     },
     "variables": {
-        "clusterApiVersion": "2016-08-01-preview",
+        "clusterApiVersion": "2015-03-01-preview",
         "applicationName": "Hs2App"
     },
     "resources": [{
