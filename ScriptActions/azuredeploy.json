@@ -53,17 +53,17 @@
                 }]
             },
             "installScriptActions": [{
-                "name": "[concat('hs2app-ambari-install,'-' ,uniquestring(variables('applicationName')))]",
+                "name": "[concat('hs2app2-ambari-install,'-' ,uniquestring(variables('applicationName')))]",
                 "uri": "https://raw.githubusercontent.com/kirankumarkolli/hdinsightsamples/master/ScriptActions/Hs2App.sh",
                 "roles": ["edgenode"]
             },
             {
-                "name": "[concat('hs2app-ambari-start','-' ,uniquestring(variables('applicationName')))]",
+                "name": "[concat('hs2app2-ambari-start','-' ,uniquestring(variables('applicationName')))]",
                 "uri": "https://raw.githubusercontent.com/kirankumarkolli/hdinsightsamples/master/ScriptActions/Hs2App.sh",
                 "roles": ["edgenode"]
             },
             {
-                "name": "[concat('hs2app-ambari-verify','-' ,uniquestring(variables('applicationName')))]",
+                "name": "[concat('hs2app2-ambari-verify','-' ,uniquestring(variables('applicationName')))]",
                 "uri": "https://raw.githubusercontent.com/kirankumarkolli/hdinsightsamples/master/ScriptActions/Hs2App.sh",
                 "roles": ["edgenode"]
             }],
