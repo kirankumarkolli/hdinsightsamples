@@ -52,29 +52,10 @@ installHostComponent() {
 waitForRequestCompletion() {
     if [ $1 -eq 202 ]
     then
-        reqUri=$(cat $LOG_FILE | grep href | cut -d '"' -f 4)
-
-        # Loop for completion, with timeout of ~300 seconds (5M)
-        var=0
-        while [ $var -lt 30 ]
-        do
-            response=$($CURL_AMBARI_COMMAND -X GET $reqUri)
-            status=$(cat $LOG_FILE | grep request_status | cut -d '"' -f 4)
-                echo "Status check for $reqUri resulted in $status"
-            if [[ "$status" == "COMPLETED" ]]
-            then
-                break;
-            fi
-                
-            sleep 10s
-            ((var++))
-        done
-        
-        if [[ "$status" != "COMPLETED" ]]
-        then
-            echo "Ambari request $reqUri failed OR timed-out after 5M" >&2
-            exit 3
-        fi
+        ## HdInsight application custom script action will block the 
+        ## async submitted operations. Yiels with success
+        echo "Exiting after submitting the async operation"
+        exit 0; 
     else 
         if [ $1 -ne 200 ]
         then

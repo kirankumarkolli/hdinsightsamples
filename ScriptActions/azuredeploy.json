@@ -35,7 +35,7 @@
     },
     "variables": {
         "clusterApiVersion": "2015-03-01-preview",
-        "applicationName": "hs2app1"
+        "applicationName": "hs2app2"
     },
     "resources": [{
         "name": "[concat(parameters('clusterName'),'/', variables('applicationName'))]",
@@ -53,7 +53,17 @@
                 }]
             },
             "installScriptActions": [{
-                "name": "[concat('hs2app1-instal','-' ,uniquestring(variables('applicationName')))]",
+                "name": "[concat('hs2app-ambari-install,'-' ,uniquestring(variables('applicationName')))]",
+                "uri": "https://raw.githubusercontent.com/kirankumarkolli/hdinsightsamples/master/ScriptActions/Hs2App.sh",
+                "roles": ["edgenode"]
+            },
+            {
+                "name": "[concat('hs2app-ambari-start','-' ,uniquestring(variables('applicationName')))]",
+                "uri": "https://raw.githubusercontent.com/kirankumarkolli/hdinsightsamples/master/ScriptActions/Hs2App.sh",
+                "roles": ["edgenode"]
+            },
+            {
+                "name": "[concat('hs2app-ambari-verify','-' ,uniquestring(variables('applicationName')))]",
                 "uri": "https://raw.githubusercontent.com/kirankumarkolli/hdinsightsamples/master/ScriptActions/Hs2App.sh",
                 "roles": ["edgenode"]
             }],
