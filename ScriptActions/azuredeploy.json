@@ -54,7 +54,7 @@
             },
             "installScriptActions": [{
                 "name": "[concat('hs2app-instal','-' ,uniquestring(variables('applicationName')))]",
-                "uri": "https://github.com/kirankumarkolli/hdinsightsamples/blob/master/ScriptActions/Hs2App.sh",
+                "uri": "https://raw.githubusercontent.com/kirankumarkolli/hdinsightsamples/master/ScriptActions/Hs2App.sh",
                 "roles": ["edgenode"]
             }],
             "uninstallScriptActions": [],
