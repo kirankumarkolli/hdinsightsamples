@@ -102,7 +102,7 @@ getHiveServerStatus() {
 # $2 -> Cluster name
 startHiveServer() {
     currentState=$(getHiveServerStatus ${1} ${2})
-    if [[ "$currentState" -ne "STARTED" ]]
+    if [[ "$currentState" != "STARTED" ]]
     then
         echo "Starting HIVE_SERVER"
         response=$($CURL_AMBARI_COMMAND -X PUT -d "{\"RequestInfo\":{\"context\":\"Start HiveServer2\",\"operation_level\":{\"level\":\"HOST_COMPONENT\",\"cluster_name\":\"$2\",\"host_name\":\"$1\",\"service_name\":\"HIVE\"}},\"Body\":{\"HostRoles\":{\"state\":\"STARTED\"}}}" http://$ACTIVE_AMBARI_HOST:$AMBARI_PORT/api/v1/clusters/$2/hosts/$1/host_components/HIVE_SERVER?HostRoles/state=$currentState)
@@ -111,7 +111,7 @@ startHiveServer() {
     fi
     
     currentState=$(getHiveServerStatus ${1} ${2})
-    if [[ "$currentState" -ne "STARTED" ]]
+    if [[ "$currentState" != "STARTED" ]]
     then
         echo "HIVE_SERVER status is not STARTED" >&2
         exit 7
