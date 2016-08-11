@@ -58,11 +58,7 @@
                 "roles": ["edgenode"]
             }],
             "uninstallScriptActions": [],
-            "httpsEndpoints": [
-            {
-                "subDomainSuffix": "hs2",
-                "destinationPort": 10001
-            }],
+            "httpsEndpoints": [],
             "applicationType": "CustomApplication"
         }
     }],
