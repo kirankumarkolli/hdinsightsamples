@@ -16,7 +16,7 @@
             "defaultValue": "hs2app"
         },
         "instanceCount": {
-            "type": "integer",
+            "type": "int",
             "metadata": {
                 "description": "The number of instances"
             }
@@ -62,7 +62,7 @@
             "computeProfile": {
                 "roles": [{
                     "name": "edgenode",
-                    "targetInstanceCount": [parameters('instanceCount')],
+                    "targetInstanceCount": "[parameters('instanceCount')]",
                     "hardwareProfile": {
                         "vmSize": "[parameters('edgeNodeSize')]"
                     }
