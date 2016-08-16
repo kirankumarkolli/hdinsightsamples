@@ -16,7 +16,7 @@
             "defaultValue": "hs2app"
         },
         "instanceCount": {
-			"type": "integer",
+			"type": "string",
             "metadata": {
                 "description": "The number of instances"
             }
