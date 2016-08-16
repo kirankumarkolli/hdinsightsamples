@@ -16,11 +16,11 @@
             "defaultValue": "hs2app"
         },
         "instanceCount": {
-			"type": "string",
+            "type": "integer",
             "metadata": {
                 "description": "The number of instances"
             }
-		},
+        },
         "edgeNodeSize": {
             "type": "string",
             "metadata": {
