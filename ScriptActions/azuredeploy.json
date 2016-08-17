@@ -18,8 +18,6 @@
         "instanceCount": {
             "type": "int",
             "defaultValue": 3,
-      "minValue": 3,
-      "maxValue": 20,
       "metadata": {
                 "description": "The number of instances"
             }
