@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -17,6 +18,7 @@ namespace HS2Tests
         protected List<HDIHS2Session> Sessions { get; set; }
         protected ConcurrentQueue<Tuple<string, string>> Slots { get; set; }
         protected ConcurrentBag<HS2ActivityRecord> Activities { get; set; }
+        protected TimeZoneInfo PstZone { get; set; }
 
         public HDIHS2SessionManager(string connectionString, int sessionCount)
         {
@@ -24,6 +26,7 @@ namespace HS2Tests
             this.NumOfSessions = sessionCount;
             this.Sessions = new List<HDIHS2Session>();
             this.Activities = new ConcurrentBag<HS2ActivityRecord>();
+            this.PstZone = TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
 
             this.Init();
         }
@@ -31,14 +34,15 @@ namespace HS2Tests
         /// <summary>
         /// Executed same query on N sessions for given duration
         /// </summary>
-        public void RunQuery(int parallism, Func<string, Tuple<string, string>> slotQuery, int numIter)
+        public void RunQuery(int numUsers, int numIter, Func<string, Tuple<string, string>> slotQuery)
         {
             // Clear activity cache 
             this.Activities = new ConcurrentBag<HS2ActivityRecord>();
+            var ct = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, this.PstZone);
 
             this.Slots = new ConcurrentQueue<Tuple<string, string>>();
             List<Task> initQueries = new List<Task>();
-            for (int i=0; i< parallism; i++)
+            for (int i=0; i< numUsers; i++)
             {
                 var slotName = "S" + i;
                 var queries = slotQuery(slotName);
@@ -63,7 +67,23 @@ namespace HS2Tests
 
             Task.WaitAll(executors.ToArray());
 
-            // Save and clearr all activities into 
+            // Save all activities
+            var nonSuccessCount = this.Activities.Where(e => e.Status != HS2ActivityState.SUCCESS).Count();
+            Trace.TraceInformation("RunQuery completed for  {0}X{1}", numUsers, numIter);
+            Trace.TraceInformation("#nonSuccess activities are :{0}", nonSuccessCount);
+
+            var csvContents = new List<string>();
+            csvContents.Add(HS2ActivityRecord.CsvHeaderRow());
+
+            foreach (var e in this.Activities)
+            {
+                csvContents.Add(e.CsvRow());
+            }
+
+            // FileName 
+            var fileName = string.Join("-", "Hs2Scalability", ct.ToString("yy-MM-dd-HH-mm"), numUsers + "X" + numIter) + ".csv";
+            Trace.TraceInformation("Writing activities to file {0}", fileName);
+            File.WriteAllLines(fileName, csvContents.ToArray());
         }
 
         internal async Task ExecQuery(HDIHS2Session session, string slotName, string query)

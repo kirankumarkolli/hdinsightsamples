@@ -18,9 +18,11 @@ namespace HS2Tests
             var numIterSamples = new int[] { 20, 50, 100, 200, 300};
             var userSamples = UsersSamples(numCores);
 
-            foreach(var users in userSamples)
+            // NumOfIter as outer loop gets the results fast
+            // More iterations is a long-haul 
+            foreach (var iter in numIterSamples)
             {
-                foreach(var iter in numIterSamples)
+                foreach (var users in userSamples)
                 {
                     Sampler(users, iter);
                 }
@@ -41,7 +43,7 @@ namespace HS2Tests
                 result.Add(i);
             }
 
-            for (int i = 3; i< 10; i++)
+            for (int i = 3; i< 20; i++)
             {
                 result.Add( i * numCores);
             }
@@ -51,24 +53,31 @@ namespace HS2Tests
 
         static void Sampler(int numUsers, int numIter)
         {
-            Trace.TraceInformation(string.Empty);
-            Trace.TraceInformation(string.Empty);
-            Trace.TraceInformation(string.Empty);
-            Trace.TraceInformation("NumUsers: {0}, NumIter: {1}M", numUsers, numIter);
-            var manager = new HDIHS2SessionManager(connectionString, numUsers);
+            try
+            {
+                Trace.TraceInformation(string.Empty);
+                Trace.TraceInformation(string.Empty);
+                Trace.TraceInformation(string.Empty);
+                Trace.TraceInformation("NumUsers: {0}, NumIter: {1}M", numUsers, numIter);
+                var manager = new HDIHS2SessionManager(connectionString, numUsers);
 
-            var query = "select * from <table> LIMIT 5000";
-            var initQuery = "DROP TABLE <table>;" +
-                            "CREATE TABLE <table> (clientid string,querytime string,market string,deviceplatform string,devicemake string,devicemodel string, state string,querydwelltime double,sessionid bigint,sessionpagevieworder bigint)PARTITIONED BY (country string);" +
-                            "INSERT OVERWRITE TABLE <table> PARTITION (country) SELECT clientid,querytime,market, deviceplatform,devicemake, devicemodel, state, querydwelltime,sessionid,sessionpagevieworder, country FROM hivesampletable;";
+                var query = "select * from <table> LIMIT 5000";
+                var initQuery = "DROP TABLE <table>;" +
+                                "CREATE TABLE <table> (clientid string,querytime string,market string,deviceplatform string,devicemake string,devicemodel string, state string,querydwelltime double,sessionid bigint,sessionpagevieworder bigint)PARTITIONED BY (country string);" +
+                                "INSERT OVERWRITE TABLE <table> PARTITION (country) SELECT clientid,querytime,market, deviceplatform,devicemake, devicemodel, state, querydwelltime,sessionid,sessionpagevieworder, country FROM hivesampletable;";
 
-            var targetTableName = "hivesampletable";
-            manager.RunQuery(
-                numUsers,
-                (name) => new Tuple<string, string>(
-                        initQuery.Replace("<table>", targetTableName),
-                        query.Replace("<table>", targetTableName)),
-                numIter);
+                var targetTableName = "hivesampletable";
+                manager.RunQuery(
+                    numUsers,
+                    numIter,
+                    (name) => new Tuple<string, string>(
+                            initQuery.Replace("<table>", targetTableName),
+                            query.Replace("<table>", targetTableName)));
+            }
+            catch(Exception e)
+            {
+                Trace.TraceError("Iteration{0}X{1} failed with {2}", numUsers, numIter, e.ToString());
+            }
         }
     }
 }

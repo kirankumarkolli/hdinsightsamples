@@ -28,5 +28,15 @@ namespace HS2Tests
         public string SessionName { get; set; }
         public HS2ActivityState Status { get; set; }
         public int ResultSetCount { get; set; }
+
+        public static string CsvHeaderRow()
+        {
+            return string.Join(",", "ActivityName", "SesssionName", "Status", "StartTime", "EndTime", "Duration(sec)", "ResultSetCount" );
+        }
+
+        public string CsvRow()
+        {
+            return string.Join(",", this.Name, this.SessionName, this.Status, this.StartTime, this.EndTime, (this.EndTime - this.StartTime).TotalSeconds.ToString("F2"), this.ResultSetCount);
+        }
     }
 }
