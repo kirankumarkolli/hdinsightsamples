@@ -10,12 +10,13 @@ namespace HS2Tests
 {
     public class Program
     {
-        private const string connectionString = "";
+        private const int CoolOffTimeInMin = 5; // Ideally clean-up function will be great
+        private const string connectionString = "Data Source=https://kkhs2tst2.azurehdinsight.net/hive2; User ID=admin; Password=KKProd~123";
 
         static void Main(string[] args)
         {
             var numCores = 4; 
-            var numIterSamples = new int[] { 20, 50, 100, 200, 300};
+            var numIterSamples = new int[] { 50, 100, 200, 300};
             var userSamples = UsersSamples(numCores);
 
             // NumOfIter as outer loop gets the results fast
@@ -24,7 +25,9 @@ namespace HS2Tests
             {
                 foreach (var users in userSamples)
                 {
-                    Sampler(users, iter);
+                    NoDagQueryWorkload(users, iter);
+                    DagQueryWorkload(users, iter);
+                    Task.Delay(TimeSpan.FromMinutes(Program.CoolOffTimeInMin)).Wait();
                 }
             }
 
@@ -37,13 +40,14 @@ namespace HS2Tests
         /// </summary>
         static List<int> UsersSamples(int numCores)
         {
+            // RASHIMG: this will return the concurrency samples. For demo if you want only one valude them return list with that value. 
             var result = new List<int>();
             for (int i = 1; i<= 2 * numCores; i++)
             {
                 result.Add(i);
             }
 
-            for (int i = 3; i< 20; i++)
+            for (int i = 3; i< 10; i++)
             {
                 result.Add( i * numCores);
             }
@@ -51,33 +55,40 @@ namespace HS2Tests
             return result;
         }
 
-        static void Sampler(int numUsers, int numIter)
+        static void Workload(string name, int numUsers, int numIter, Func<string, Tuple<string, string>> slotQueryFunc)
         {
             try
             {
                 Trace.TraceInformation(string.Empty);
                 Trace.TraceInformation(string.Empty);
                 Trace.TraceInformation(string.Empty);
-                Trace.TraceInformation("NumUsers: {0}, NumIter: {1}M", numUsers, numIter);
+                Trace.TraceInformation("Starting workload:{0} NumUsers:{1}, NumIter:{2}", name, numUsers, numIter);
                 var manager = new HDIHS2SessionManager(connectionString, numUsers);
 
-                var query = "select * from <table> LIMIT 5000";
-                var initQuery = "DROP TABLE <table>;" +
-                                "CREATE TABLE <table> (clientid string,querytime string,market string,deviceplatform string,devicemake string,devicemodel string, state string,querydwelltime double,sessionid bigint,sessionpagevieworder bigint)PARTITIONED BY (country string);" +
-                                "INSERT OVERWRITE TABLE <table> PARTITION (country) SELECT clientid,querytime,market, deviceplatform,devicemake, devicemodel, state, querydwelltime,sessionid,sessionpagevieworder, country FROM hivesampletable;";
-
-                var targetTableName = "hivesampletable";
                 manager.RunQuery(
+                    name,
                     numUsers,
                     numIter,
-                    (name) => new Tuple<string, string>(
-                            initQuery.Replace("<table>", targetTableName),
-                            query.Replace("<table>", targetTableName)));
+                    slotQueryFunc);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                Trace.TraceError("Iteration{0}X{1} failed with {2}", numUsers, numIter, e.ToString());
+                Trace.TraceError("Workload:{0} Iteration:{1}X{2} failed with {3}", name, numUsers, numIter, e.ToString());
             }
+        }
+
+        static void NoDagQueryWorkload(int numUsers, int numIter)
+        {
+            var noDagQuery = "select * from hivesampletable LIMIT 5000";
+            Func<string, Tuple<string, string>> slotQueryFunc = (name) => new Tuple<string, string>(string.Empty, noDagQuery);
+            Program.Workload("NODAG", numUsers, numIter, slotQueryFunc);
+        }
+
+        static void DagQueryWorkload(int numUsers, int numIter)
+        {
+            var noDagQuery = "select market, count(*) from hivesampletable group by market";
+            Func<string, Tuple<string, string>> slotQueryFunc = (name) => new Tuple<string, string>(string.Empty, noDagQuery);
+            Program.Workload("DAG", numUsers, numIter, slotQueryFunc);
         }
     }
 }

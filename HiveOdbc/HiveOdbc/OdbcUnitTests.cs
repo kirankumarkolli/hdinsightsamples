@@ -30,7 +30,15 @@ namespace HiveOdbcUt
         [TestMethod]
         public void SimpleGroupByQuery()
         {
-            var cmd = "select market, count(*) from hivesampletable GROUP BY market";
+            var cmd = "INSERT OVERWRITE TABLE S0 PARTITION (country) SELECT clientid,querytime,market, deviceplatform,devicemake, devicemodel, state, querydwelltime,sessionid,sessionpagevieworder, country FROM hivesampletable;";
+            var settings = new string[] { "hive.execution.engine=tez" };
+            ExecHqlCmd("", cmd, null, false).Wait();
+        }
+
+        [TestMethod]
+        public void SingleSelectQuery()
+        {
+            var cmd = "SELECT market, COUNT(*) FROM hivesampletable GROUP BY market;";
             var settings = new string[] { "hive.execution.engine=tez" };
             ExecHqlCmd("", cmd, null, false).Wait();
         }
@@ -38,7 +46,7 @@ namespace HiveOdbcUt
         [TestMethod]
         public void ParallelQueryExecution()
         {
-            var parallism = 5;
+            var parallism = 100;
             var tasks = new List<Task>();
             var command = "SELECT market, COUNT(*) FROM hivesampletable GROUP BY market";
 
@@ -61,38 +69,46 @@ namespace HiveOdbcUt
 
             var connectionString = OdbcUnitTests.GetConnectionString(OdbcUnitTests.HiveDsnConnectionString, settings);
             Trace.TraceInformation("{0} Using connection string => {1} ", traceId, connectionString);
-            using (OdbcConnection conn = new OdbcConnection(connectionString))
+
+            try
             {
-                var startTime = DateTimeOffset.UtcNow;
-
-                await conn.OpenAsync();
-                using (OdbcCommand cmd = conn.CreateCommand())
+                using (OdbcConnection conn = new OdbcConnection(connectionString))
                 {
-                    cmd.CommandText = hqlCmd;
+                    var startTime = DateTimeOffset.UtcNow;
 
-                    using (DbDataReader dr = await cmd.ExecuteReaderAsync())
+                    await conn.OpenAsync();
+                    using (OdbcCommand cmd = conn.CreateCommand())
                     {
-                        var completionTime = DateTimeOffset.UtcNow;
-                        var execTime = completionTime.Subtract(startTime);
-                        Trace.TraceInformation(traceId + " : execution time (sec) -> " + execTime.TotalSeconds);
+                        cmd.CommandText = hqlCmd;
 
-                        if (!skipResults)
+                        using (DbDataReader dr = await cmd.ExecuteReaderAsync())
                         {
-                            while (dr.Read())
+                            var completionTime = DateTimeOffset.UtcNow;
+                            var execTime = completionTime.Subtract(startTime);
+                            Trace.TraceInformation(traceId + " : execution time (sec) -> " + execTime.TotalSeconds);
+
+                            if (!skipResults)
                             {
-                                var columns = new List<string>();
-                                for (int i = 0; i < dr.VisibleFieldCount; i++)
+                                while (dr.Read())
                                 {
-                                    columns.Add(dr.GetValue(i).ToString());
+                                    var columns = new List<string>();
+                                    for (int i = 0; i < dr.VisibleFieldCount; i++)
+                                    {
+                                        columns.Add(dr.GetValue(i).ToString());
+                                    }
+                                    Trace.TraceInformation(traceId + " : " + string.Join(", ", columns));
                                 }
-                                Trace.TraceInformation(traceId + " : " + string.Join(", ", columns));
                             }
                         }
                     }
                 }
-            }
 
-            Trace.TraceInformation(traceId + " : completed");
+                Trace.TraceInformation(traceId + " : completed");
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Iteration failed");
+            }
         }
 
         private static string GetConnectionString(string hiveDsnConnectionString, string[] settings)

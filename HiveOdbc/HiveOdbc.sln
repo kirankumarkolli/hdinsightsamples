@@ -5,6 +5,8 @@ VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HiveOdbc", "HiveOdbc\HiveOdbc.csproj", "{D6A9B37C-B9F7-4ECF-A85B-30C740BD78FC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Driver", "Driver\Driver.csproj", "{0A55A265-CF5A-45A3-8FA5-BC371E7AC3EF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{D6A9B37C-B9F7-4ECF-A85B-30C740BD78FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D6A9B37C-B9F7-4ECF-A85B-30C740BD78FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D6A9B37C-B9F7-4ECF-A85B-30C740BD78FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A55A265-CF5A-45A3-8FA5-BC371E7AC3EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A55A265-CF5A-45A3-8FA5-BC371E7AC3EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A55A265-CF5A-45A3-8FA5-BC371E7AC3EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A55A265-CF5A-45A3-8FA5-BC371E7AC3EF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

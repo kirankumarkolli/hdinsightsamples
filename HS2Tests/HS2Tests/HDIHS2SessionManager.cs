@@ -34,7 +34,7 @@ namespace HS2Tests
         /// <summary>
         /// Executed same query on N sessions for given duration
         /// </summary>
-        public void RunQuery(int numUsers, int numIter, Func<string, Tuple<string, string>> slotQuery)
+        public void RunQuery(string workloadName, int numUsers, int numIter, Func<string, Tuple<string, string>> slotQuery)
         {
             // Clear activity cache 
             this.Activities = new ConcurrentBag<HS2ActivityRecord>();
@@ -81,7 +81,7 @@ namespace HS2Tests
             }
 
             // FileName 
-            var fileName = string.Join("-", "Hs2Scalability", ct.ToString("yy-MM-dd-HH-mm"), numUsers + "X" + numIter) + ".csv";
+            var fileName = string.Join("-", "Hs2", workloadName, ct.ToString("yyyy-MM-dd-HH-mm"), numUsers + "X" + numIter) + ".csv";
             Trace.TraceInformation("Writing activities to file {0}", fileName);
             File.WriteAllLines(fileName, csvContents.ToArray());
         }
@@ -94,6 +94,11 @@ namespace HS2Tests
 
         internal void NotifyActivity(HS2ActivityRecord activity)
         {
+            // RASHIM: For specifc activity dump on console here it-self 
+            // example: 
+            //  1. query execution times: ExecuteQueryOnly
+            //  2. fetching results: FetchResults
+            //  3. Session open times: OpenSession
             this.Activities.Add(activity);
         }
 
